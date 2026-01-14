@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 if args.start_prod is True:
   from waitress import serve
-  from server import app
+  from server.app import app
   os.environ['MODE'] = 'PROD'
   print(f"Running production server on port {os.environ['PORT']}")
   serve(app, host='0.0.0.0', port=os.environ['PORT'])
