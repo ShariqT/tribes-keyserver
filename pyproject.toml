@@ -1,12 +1,14 @@
 [project]
 name = "tribes-keyserver"
 version = "0.1.0"
-description = "Add your description here"
+description = "Example implementation of a Tribes identity registry. Also provides an example implementation of messaging."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "dotenv>=0.9.9",
     "flask>=3.1.2",
+    "pgpy>=0.6.0",
     "pymongo>=4.16.0",
+    "pytz>=2025.2",
     "waitress>=3.0.2",
 ]
