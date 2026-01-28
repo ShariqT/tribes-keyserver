@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+skeys/pub.key
+skeys/sec.key
+.env

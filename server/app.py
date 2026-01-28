@@ -11,9 +11,9 @@ from flask import Flask, request
 from .db import Keystore
 from .messages import MessageRouter
 from .ferretdb import FerretDB
-from .utils import encrypt_response, return_keyserver_pubkey
+from utils import return_keyserver_pubkey
 from .auth import confirm_identity, challenge_identity
-import sys
+import sys, os
 import garden
 
 
@@ -27,6 +27,7 @@ def ensure_db_indexes():
       db = FerretDB()
       db.create_indexes()
     except Exception as e:
+      print(e)
       print(f"Could not ensure db indexes. Shutting down: {str(e)}")
       sys.exit(1)
 
@@ -46,6 +47,7 @@ def check_username():
     hold_id = ks.check_username(request.args.get('username'))
     return {'hold_id': str(hold_id)}
   except Exception as e:
+    app.logger.error(f"function: get_publickey_from_signature, signature: {signature}, error message: {str(e)}")
     return {'error': f'Error checking username because: {str(e)}'}
 
 
@@ -56,7 +58,7 @@ def find_username():
     doc = ks.search_by_username(request.args.get('username'))
     return {'matches': doc }
   except Exception as e:
-    print(e)
+    app.logger.error(f"function: find_username, username: {request.args.get('username')}, error message: {str(e)}")
     return {"error": "There was an error durimg the search"}
 
 
@@ -67,6 +69,7 @@ def get_publickey_from_signature(signature):
       card_info = ks.get_contact(signature)
       return {'username': card_info['username'], 'key': card_info['key'], 'signature': signature }
     except Exception as e:
+      app.logger.error(f"function: get_publickey_from_signature, signature: {signature}, error message: {str(e)}")
       return {'error': f'Error getting this signature: {str(e)}'}
 
 
@@ -79,6 +82,7 @@ def challenge_signature(signature):
     ks.create_challenge(signature, challenge_txt)
     return {'challenge': challenge }
   except Exception as e:
+    app.logger.error(f"function: challenge_signature, signature: {signature}, error message: {str(e)}")
     return {'error': 'Could not complete the challenge'}
 
 @app.route("/confirm/<signature>", methods=["POST"])
@@ -98,8 +102,11 @@ def confirm_signature(signature):
     else:
       return {'error': 'Challenge failed!'}
   except Exception as e:
-    print(e)
-    return {'error': 'Could not get messages'}
+    if os.getenv('MODE') == 'DEBUG':
+      import traceback
+      traceback.print_exc() 
+    app.logger.error(f"function: confirm_signature, signature: {signature}, error message: {str(e)}")
+    return {'error': f'Could not get messages: {str(e)}'}
 
 
 @app.route("/key", methods=['GET'])
@@ -117,7 +124,7 @@ def send_message_to_signature(signature):
         ks.store_message(signature, data['from'], data['message'])
         return {'success': True }
     except Exception as e:
-        print(e)
+        app.logger.error(f"function: send_message_to_signature, signature: {signature}, error message: {str(e)}")
         return {'error': 'Could not send this message. There was an error on the mail server.'}
 
 @app.route("/save", methods=["POST"])
@@ -132,5 +139,6 @@ def save_key():
     return {'success': True}
   except Exception as e:
     print(e)
+    app.logger.error(f"function: save_key, objectid: {objectid}, pubkey: {pubkey},  error message: {str(e)}")
     return {'error': f'Error saving key: {str(e)}'}
 
