@@ -37,7 +37,7 @@ def ensure_db_indexes():
 def index():
   if len(os.listdir(get_keyfile_directory())) == 0:
     generate_keys(os.getenv('USERNAME'), os.getenv('EMAIL'), get_keyfile_directory())
-    print(f"generated keys for {os.getenv('USERNAME')}")
+    app.logger.info(f"generated keys for {os.getenv('USERNAME')}")
   return "ok.computer"
 
 
