@@ -5,4 +5,7 @@ WORKDIR /app
 COPY . .
 RUN uv sync
 ENV PORT=8000
-ENV DATABASE_URI=mongodb://127.0.0.1:5432
+ENV DATABASE_URI=mongodb://user:pass@127.0.0.1:12345/keystore2
+ENV EMAIL=worldtree@tribes.ltd
+ENV USERNAME=worldtree
+ENTRYPOINT ["uv", "run", "./server.py", "--start-prod"]
