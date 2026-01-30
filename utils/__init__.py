@@ -11,11 +11,11 @@ def generate_keys(username, email, path):
     pass
   
   print("Saving keys in " + path)
-  fp = open( path + "/pub.key", "w")
+  fp = open( path + "/pub.key", "w+")
   fp.write(str(public_key))
   fp.close()
 
-  fp = open(path + "/sec.key", "w")
+  fp = open(path + "/sec.key", "w+")
   fp.write(str(keys))
   fp.close()
   print("Keys created!")
