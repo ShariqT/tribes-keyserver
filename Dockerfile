@@ -1,0 +1,11 @@
+FROM python:alpine
+RUN pip install uv
+RUN mkdir /app
+WORKDIR /app
+COPY . .
+RUN uv sync
+ENV PORT=8000
+ENV DATABASE_URI=mongodb://user:pass@127.0.0.1:12345/keystore2
+ENV EMAIL=worldtree1@tribes.ltd
+ENV USERNAME=worldtree1
+ENTRYPOINT ["uv", "run", "./server.py", "--start-prod"]
