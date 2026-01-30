@@ -9,14 +9,11 @@ import utils
 parser = argparse.ArgumentParser(prog="Tribes Keyserver", description="Tribes KeyServer")
 parser.add_argument("--start-prod", action='store_true')
 parser.add_argument("--start-debug", action='store_true')
-parser.add_argument("--keys", action='store_true')
 
 args = parser.parse_args()
 load_dotenv()
 
-if args.keys is True:
-  if len(os.listdir(utils.get_keyfile_directory())) == 0:
-      utils.generate_keys(os.getenv('USERNAME'), os.getenv('EMAIL'), utils.get_keyfile_directory())
+  
 
 if args.start_prod is True:
   from waitress import serve

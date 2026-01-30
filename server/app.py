@@ -11,7 +11,7 @@ from flask import Flask, request
 from .db import Keystore
 from .messages import MessageRouter
 from .ferretdb import FerretDB
-from utils import return_keyserver_pubkey
+from utils import return_keyserver_pubkey, generate_keys, get_keyfile_directory
 from .auth import confirm_identity, challenge_identity
 import sys, os
 import garden
@@ -35,6 +35,8 @@ def ensure_db_indexes():
 
 @app.route("/")
 def index():
+  if len(os.listdir(get_keyfile_directory())) == 0:
+    generate_keys(os.getenv('USERNAME'), os.getenv('EMAIL'), get_keyfile_directory())
   return "ok.computer"
 
 

@@ -8,5 +8,4 @@ ENV PORT=8000
 ENV DATABASE_URI=mongodb://user:pass@127.0.0.1:12345/keystore2
 ENV EMAIL=worldtree1@tribes.ltd
 ENV USERNAME=worldtree1
-VOLUME /var/keys/
 ENTRYPOINT ["uv", "run", "./server.py", "--start-prod"]
