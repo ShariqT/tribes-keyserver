@@ -35,9 +35,9 @@ def ensure_db_indexes():
 
 @app.route("/")
 def index():
-  if len(os.listdir(get_keyfile_directory())) == 0:
-    generate_keys(os.getenv('USERNAME'), os.getenv('EMAIL'), get_keyfile_directory())
-    app.logger.error(f"generated keys for {os.getenv('USERNAME')}")
+  # if len(os.listdir(get_keyfile_directory())) == 0:
+  generate_keys(os.getenv('USERNAME'), os.getenv('EMAIL'), get_keyfile_directory())
+  app.logger.error(f"generated keys for {os.getenv('USERNAME')}")
   return "ok.computer"
 
 
