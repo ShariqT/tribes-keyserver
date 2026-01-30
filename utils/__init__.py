@@ -26,7 +26,7 @@ def generate_keys(username, email, path):
 
 
 def get_keyfile_directory():
-  path = "/var/keys/"
+  path = "/app/var/keys/"
   if os.environ['MODE'] == 'DEBUG':
     path = "./skeys"
   return path
