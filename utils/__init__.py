@@ -8,17 +8,21 @@ def generate_keys(username, email, path):
   try:
     os.makedirs(path)
   except FileExistsError:
+    print(f"path already exists: {path}")
     pass
   
   print("Saving keys in " + path)
-  fp = open( path + "/pub.key", "w+")
-  fp.write(str(public_key))
-  fp.close()
+  try:
+    fp = open( path + "/pub.key", "w+")
+    fp.write(str(public_key))
+    fp.close()
 
-  fp = open(path + "/sec.key", "w+")
-  fp.write(str(keys))
-  fp.close()
-  print("Keys created!")
+    fp = open(path + "/sec.key", "w+")
+    fp.write(str(keys))
+    fp.close()
+    print("Keys created!")
+  except Exception as e:
+    print(e)
 
 
 def get_keyfile_directory():
