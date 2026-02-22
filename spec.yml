@@ -1,0 +1,256 @@
+openapi: 3.0.0
+info:
+  title: Tribes Keyserver API
+  version: 1.0.0
+  description: The Tribes Keyserver is the heart of the Tribes Network. This piece of software handles sending, storing and retrieving messages
+  contact:
+    name: Chief
+    email: chief@tribes.ltd
+
+paths:
+  /:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Server is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok.computer
+
+  /check:
+    get:
+      summary: Check username availability and reserve it
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Username check result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      hold_id:
+                        type: string
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+        '405':
+          description: Username not provided
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Go away!
+
+  /username:
+    get:
+      summary: Search for a user by username
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      matches:
+                        type: object
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+
+  /card/{signature}:
+    get:
+      summary: Get public key and info by signature
+      parameters:
+        - name: signature
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Contact card info
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      username:
+                        type: string
+                      key:
+                        type: string
+                      signature:
+                        type: string
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+
+  /challenge/{signature}:
+    post:
+      summary: Issue an identity challenge to a signature
+      parameters:
+        - name: signature
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Challenge issued
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      challenge:
+                        type: string
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+
+  /confirm/{signature}:
+    post:
+      summary: Confirm identity and retrieve messages
+      parameters:
+        - name: signature
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - attempted_message
+              properties:
+                attempted_message:
+                  type: string
+      responses:
+        '200':
+          description: Challenge result and messages
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          type: object
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+
+  /key:
+    get:
+      summary: Get the server's public key
+      responses:
+        '200':
+          description: Server public key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+
+  /send/{signature}:
+    post:
+      summary: Send an encrypted message to a signature
+      parameters:
+        - name: signature
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from
+                - message
+              properties:
+                from:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Send result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+
+  /save:
+    post:
+      summary: Save a public key for a reserved username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username_id
+                - pubkey
+              properties:
+                username_id:
+                  type: string
+                pubkey:
+                  type: string
+      responses:
+        '200':
+          description: Save result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                  - type: object
+                    properties:
+                      error:
+                        type: string
