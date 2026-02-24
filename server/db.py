@@ -19,7 +19,7 @@ class DataCenter(ABC):
         pass
     
     @abstractmethod
-    def save_message(self, signature:str, from_username: str, encrypted_message:str):
+    def save_message(self, signature:str, from_username: str, encrypted_message:str, enc: str):
         pass
       
     @abstractmethod
@@ -49,8 +49,8 @@ class Keystore:
         return self.storage.get_challenge_for_signature(signature)
     def retrieve_messages(self, signature):
         return self.storage.get_messages(signature)
-    def store_message(self, to_signature, from_username, encrypted_message):
-        return self.storage.save_message(to_signature, from_username, encrypted_message)
+    def store_message(self, to_signature, from_username, encrypted_message, enc):
+        return self.storage.save_message(to_signature, from_username, encrypted_message, enc)
     def remove_challenge(self, signature):
         return self.storage.remove_challenge(signature)
     def search_by_username(self, query):

@@ -28,6 +28,7 @@ def ensure_db_indexes():
       db.create_indexes()
     except Exception as e:
       print(e)
+      print(os.environ['DATABASE_URI'])
       print(f"Could not ensure db indexes. Shutting down: {str(e)}")
       sys.exit(1)
 
@@ -48,10 +49,11 @@ def check_username():
     return ("Go away!", 405)
   try:
     ks = Keystore(FerretDB())
-    hold_id = ks.check_username(request.args.get('username'))
+    username = request.args.get('username')
+    hold_id = ks.check_username(username)
     return {'hold_id': str(hold_id)}
   except Exception as e:
-    app.logger.error(f"function: get_publickey_from_signature, signature: {signature}, error message: {str(e)}")
+    app.logger.error(f"function: check_username, username: {username}, error message: {str(e)}")
     return {'error': f'Error checking username because: {str(e)}'}
 
 
@@ -82,10 +84,12 @@ def challenge_signature(signature):
   try:
     ks = Keystore(FerretDB())
     record = ks.get_contact(signature)
-    challenge, challenge_txt = challenge_identity(record['key'])
+    challenge, challenge_txt, shared_key = challenge_identity(record['key'])
     ks.create_challenge(signature, challenge_txt)
-    return {'challenge': challenge }
+    return {'challenge': challenge, 'enc': shared_key }
   except Exception as e:
+    import traceback
+    traceback.print_exc()
     app.logger.error(f"function: challenge_signature, signature: {signature}, error message: {str(e)}")
     return {'error': 'Could not complete the challenge'}
 
@@ -93,10 +97,12 @@ def challenge_signature(signature):
 def confirm_signature(signature):
   try:
     data = request.get_json()
+    print(f"data in confirm is {data}")
     ks = Keystore(FerretDB())
     record = ks.get_contact(signature)
+    receiver_key = garden.create_key_from_text(record['key'])
     challenge_txt = ks.get_current_challenge(signature)
-    approved = confirm_identity(challenge_txt, data['attempted_message'])
+    approved = confirm_identity(challenge_txt, data['attempted_message'], data['enc'])
     ks.remove_challenge(signature)
     if approved is True:
       current_messages = ks.retrieve_messages(signature)
@@ -124,8 +130,9 @@ def send_server_key():
 def send_message_to_signature(signature):
     try:
         data = request.get_json()
+        print(f"send sig {data}")
         ks = Keystore(FerretDB())
-        ks.store_message(signature, data['from'], data['message'])
+        ks.store_message(signature, data['from'], data['message'], data['enc'])
         return {'success': True }
     except Exception as e:
         app.logger.error(f"function: send_message_to_signature, signature: {signature}, error message: {str(e)}")
@@ -137,12 +144,13 @@ def save_key():
   object_id = data.get('username_id')
   pubkey = data.get('pubkey')
   pubkey_key = garden.create_key_from_text(pubkey)
+  fingerprint = garden.get_key_fingerprint(pubkey_key)
   try:
     ks = Keystore(FerretDB())
-    ks.save(object_id, pubkey, pubkey_key.fingerprint)
+    ks.save(object_id, pubkey, fingerprint)
     return {'success': True}
   except Exception as e:
     print(e)
-    app.logger.error(f"function: save_key, objectid: {objectid}, pubkey: {pubkey},  error message: {str(e)}")
+    app.logger.error(f"function: save_key, objectid: {object_id}, pubkey: {pubkey},  error message: {str(e)}")
     return {'error': f'Error saving key: {str(e)}'}
 

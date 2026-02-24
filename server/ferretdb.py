@@ -19,7 +19,7 @@ class FerretDB(DataCenter):
     def search_by_username(self, query: str):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             keys_username = db['keys_username']
             record = keys_username.find(
               {'username': {'$regex': query}}, 
@@ -32,7 +32,7 @@ class FerretDB(DataCenter):
     def check_for_username(self, potential_username: str):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             reserved_names = db['reserved_names']
             if reserved_names.find_one({'username': potential_username}):
                 raise Exception("Someone already took this")
@@ -51,7 +51,7 @@ class FerretDB(DataCenter):
     def save_key_and_username(self, username_id: str, key: str, signature: str):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             names_on_hold = db['names_on_hold']
             document = names_on_hold.find_one({'_id': ObjectId(username_id)})
             if not document:
@@ -74,7 +74,7 @@ class FerretDB(DataCenter):
     def get_challenge_for_signature(self, signature):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             history = db['challenge_history']
             record = history.find_one({'signature': signature})
             if record is None:
@@ -89,7 +89,7 @@ class FerretDB(DataCenter):
     def create_challenge(self, signature, challenge_txt):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             history = db['challenge_history']
             history.insert_one({
               'challenge_txt': challenge_txt,
@@ -105,7 +105,7 @@ class FerretDB(DataCenter):
     def get_key_and_username(self, signature: str):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             key_username = db['keys_username']
             card_info = key_username.find_one({'signature': signature})
             if card_info is None:
@@ -120,7 +120,7 @@ class FerretDB(DataCenter):
     def remove_challenge(self, signature):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             history = db['challenge_history']
             history.delete_one({'signature': signature})
         except Exception as e:
@@ -131,9 +131,9 @@ class FerretDB(DataCenter):
     def get_messages(self, signature):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             messages = db['message_storage']
-            selected = messages.find({'to': signature}, {'to': 1, 'from': 1, 'message': 1, '_id': 0})
+            selected = messages.find({'to': signature}, {'to': 1, 'from': 1, 'message': 1, 'enc': 1, '_id': 0})
             return list(selected)
         except Exception as e:
             raise Exception(f"Could not find any messages")
@@ -143,19 +143,22 @@ class FerretDB(DataCenter):
 
 
 
-    def save_message(self, to_signature:str, from_username:str, client_encrypted_message:str):
+    def save_message(self, to_signature:str, from_username:str, client_encrypted_message:str, enc:str):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             messages = db['message_storage']
             messages.insert_one({
               'from': from_username, 
               'to': to_signature, 
               'message': client_encrypted_message,
+              'enc': enc,
               'createdAt': datetime.now(pytz.UTC) 
             })
             return True
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise Exception(f"Could not send this message: {str(e)}")
         finally:
             client.close()
@@ -165,7 +168,7 @@ class FerretDB(DataCenter):
     def create_indexes(self):
         client = MongoClient(self.conn_uri)
         try:
-            db = client.get_default_database()
+            db = client['keystore']
             names_on_hold = db['names_on_hold']
             names_on_hold.create_index('createdAt', expireAfterSeconds=600)
             messages = db['message_storage']
@@ -173,6 +176,8 @@ class FerretDB(DataCenter):
             challenges = db['challenge_history']
             challenges.create_index('createdAt', expireAfterSeconds=120)
         except Exception as e:
-            raise Exception("Could not create TTL indexes. Stop the server!")
+            import traceback
+            traceback.print_exc()
+            raise Exception("Could not create neccessary indexes. Stop the server!")
         finally:
             client.close()
