@@ -48,6 +48,54 @@ class FerretDB(DataCenter):
         finally:
             client.close()
 
+    def get_tribe_record(self, tribe_id: str):
+        client = MongoClient(self.conn_uri)
+        try:
+            db = client['keystore']
+            tribes_collection = db['tribes']
+            tribe_doc = tribes_collection.find_one({
+              '_id': tribe_id
+            })
+            return tribe_doc
+        finally:
+            client.close()
+
+
+    def post_message_to_tribe(self, tribe_id: str, encrypted_message: str):
+        client = MongoClient(self.conn_uri)
+        try:
+            db = client['keystore']
+            tribes_collection = db['tribes']
+            tribe_doc = tribes_collection.find_one({
+              '_id': tribe_id
+            })
+            tribe_doc.messages.append({
+              'enc': encrypted_message,
+              'createdAt': datetime.now(pytz.UTC)
+            })
+            tribes_collection.update_one({'_id': tribe_id}, tribe_doc)
+        finally:
+            client.close()
+
+
+    def create_tribe(self, data: dict, secret: str):
+        client = MongoClient(self.conn_uri)
+        try:
+            db = client['keystore']
+            tribes_collection = db['tribes']
+            inserted_doc = tribes_collection.insert_one({
+              'name': data['tribe_name'],
+              "description": data['tribe_description'],
+              'admin_signature': data['admin_signature'],
+              'shared_key':  secret,
+              'blocklist': [],
+              'members': [ data['admin_signature'] ],
+              'messages':[]
+            })
+            return inserted_doc.inserted_id
+        finally:
+            client.close()
+      
     def save_key_and_username(self, username_id: str, key: str, signature: str):
         client = MongoClient(self.conn_uri)
         try:

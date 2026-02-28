@@ -34,6 +34,18 @@ class DataCenter(ABC):
     def search_by_username(self, query: str):
         pass
     
+    @abstractmethod
+    def get_tribe_record(self, tribe_id: str):
+        pass
+    
+    @abstractmethod
+    def post_message_to_tribe(self, tribe_id: str, encrypted_message: str):
+        pass
+    
+    @abstractmethod
+    def create_tribe(self, tribe_name: str, admin_username: str, admin_signature: str, secret: str):
+        pass
+    
 class Keystore:
     def __init__(self, storage: DataCenter):
         self.storage = storage
@@ -55,3 +67,9 @@ class Keystore:
         return self.storage.remove_challenge(signature)
     def search_by_username(self, query):
         return self.storage.search_by_username(query)
+    def get_tribe_record(self, tribe_id):
+        return self.storage.get_tribe_record(tribe_id)
+    def post_message_to_tribe(self, tribe_id: str, encrypted_message: str):
+        return self.storage.post_message_to_tribe(tribe_id, encrypted_message)
+    def create_tribe(self, data: dict, secret: str):
+        return self.storage.create_tribe(data, secret)

@@ -4,6 +4,7 @@ import secrets
 from utils.bip39 import INDEX_TO_WORD_TABLE, decode_phrase, encode_bytes
 from Crypto.Protocol import HPKE
 import base64
+from Crypto.Random import get_random_bytes
 
 def open_keyfile(keyfile_path):
   key, _ = pgpy.PGPKey.from_file(keyfile_path)
@@ -53,6 +54,10 @@ def decrypt_message(encrypted_message, secret_key, shared_key):
 
   except Exception as e:
     raise Exception("could not decrypt message")
+
+def create_cipher_secret():
+  key = get_random_bytes(16)
+  return bytes_to_b64(key)
 
 def get_key_fingerprint(pubkey_key):
   return pubkey_key.export_key(format="raw")[:20].hex()
