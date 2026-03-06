@@ -54,26 +54,29 @@ class FerretDB(DataCenter):
             db = client['keystore']
             tribes_collection = db['tribes']
             tribe_doc = tribes_collection.find_one({
-              '_id': tribe_id
+              '_id': ObjectId(tribe_id)
             })
             return tribe_doc
         finally:
             client.close()
 
 
-    def post_message_to_tribe(self, tribe_id: str, encrypted_message: str):
+    def post_message_to_tribe(self, tribe_id: str, encrypted_data: dict):
         client = MongoClient(self.conn_uri)
         try:
             db = client['keystore']
             tribes_collection = db['tribes']
             tribe_doc = tribes_collection.find_one({
-              '_id': tribe_id
+              '_id': ObjectId(tribe_id)
             })
-            tribe_doc.messages.append({
-              'enc': encrypted_message,
+            tribe_doc['messages'].append({
+              'ct': encrypted_data['ct'],
+              'iv': encrypted_data['iv'],
               'createdAt': datetime.now(pytz.UTC)
             })
-            tribes_collection.update_one({'_id': tribe_id}, tribe_doc)
+            new_messages = {"$set": {"messages": tribe_doc['messages']}}
+            tribes_collection.update_one({'_id': ObjectId(tribe_id)}, new_messages)
+            return True
         finally:
             client.close()
 

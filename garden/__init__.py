@@ -5,6 +5,8 @@ from utils.bip39 import INDEX_TO_WORD_TABLE, decode_phrase, encode_bytes
 from Crypto.Protocol import HPKE
 import base64
 from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 
 def open_keyfile(keyfile_path):
   key, _ = pgpy.PGPKey.from_file(keyfile_path)
@@ -61,3 +63,15 @@ def create_cipher_secret():
 
 def get_key_fingerprint(pubkey_key):
   return pubkey_key.export_key(format="raw")[:20].hex()
+
+def cipher_encrypt(data: bytes, secret_key: bytes):
+  cipher = AES.new(secret_key, AES.MODE_CBC)
+  ct_bytes = cipher.encrypt(pad(data, AES.block_size))
+  return { "iv": bytes_to_b64(cipher.iv), "ct": bytes_to_b64(ct_bytes) }
+
+def cipher_decrypt(encrypted_data:str , iv:str, secret_key: bytes):
+  iv = b64_to_bytes(iv)
+  encrypted_data = b64_to_bytes(encrypted_message)
+  cipher = AES.new(secret_key, AES.MODE_CBC, iv)
+  data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
+  return str(data, 'utf-8')

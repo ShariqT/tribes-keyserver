@@ -13,10 +13,11 @@ from .messages import MessageRouter
 from .ferretdb import FerretDB
 from utils import return_keyserver_pubkey, generate_keys, get_keyfile_directory, open_server_secret_key
 from .auth import confirm_identity, challenge_identity
-import sys, os
+import sys, os, json
 import garden
 import utils
 import secrets
+
 
 
 
@@ -146,7 +147,7 @@ def join_tribe(tribe_id):
     data = request.get_json()
     try:
         ks = Keystore(FerretDB())
-        receiver_key = garden.create_key_from_text(record['key'])
+        receiver_key = garden.create_key_from_text(data['key'])
         signature = garden.get_key_fingerprint(receiver_key)
         challenge_txt = ks.get_current_challenge(signature)
         approved = confirm_identity(challenge_txt, data['attempted_message'], data['enc'])
@@ -169,55 +170,113 @@ def join_tribe(tribe_id):
         app.logger.error(f"function: join_tribe, signature: {signature}, error message: {str(e)}")
         return {'error': 'Could not send this tribe. There was an error on the mail server.'}
 
+@app.route("/tribe/<tribe_id>/post", methods=["POST"])
+def post_message_to_tribe(tribe_id):
+    data = request.get_json()
+    try:
+        ks = Keystore(FerretDB())
+        receiver_key = garden.create_key_from_text(data['key'])
+        signature = garden.get_key_fingerprint(receiver_key)
+        challenge_txt = ks.get_current_challenge(signature)
+        approved = confirm_identity(challenge_txt, data['data'][0]['attempted_challenge'], data['data'][0]['enc'])
+        ks.remove_challenge(signature)
+        if approved is True:
+            record = ks.get_tribe_record(tribe_id)
+            secret_key = utils.open_server_secret_key()
+            payload = garden.decrypt_message(data['data'][1]['payload'], secret_key, data['data'][1]['enc'])          
+            # data_str = f"{username}@@{datetime.now(pytz.UTC)}@@{form_values['title']}@@{text_image_dict['original_text']}@@{json.dumps(links)}"
+            poster_username, dt_posted, post_title, post_text, link_data = payload.split("@@")
+            new_post = {
+              "from": poster_username, 
+              "posted": dt_posted,
+              "title": post_title,
+              "text": post_text,
+              "link_data": link_data
+            }
+            encrypted_data = garden.cipher_encrypt(bytes(json.dumps(new_post), 'utf-8'), garden.b64_to_bytes(record['shared_key']))
+            ks.post_message_to_tribe(tribe_id, encrypted_data)
+            return { "success": True }
+        else:
+            return {
+              "error": "Man, something is fucked up on the server"
+            }
+    except Exception as e:
+        import traceback
+        print(traceback.print_exc())
+        app.logger.error(f"function: post_message_to_tribe, tribe_id: {tribe_id}, error message: {str(e)}")
+        return {'error': 'There was an error posting to this mail server.'}
 
 @app.route("/tribe/<tribe_id>", methods=["POST"])
 def get_tribe(tribe_id):
-    # encrypted payload is 
-    # {
-    #   "attempted_message": <message attepmt>,
-    #    "payload": <d data message>
-    #  "enc": <shared_secret>
+    # payload from client is 
+    #  { "key": <client public key>
+    #  "data": [
+    #       {"attempted_challenge": attempted_challenge, "enc": attempted_challenge_enc},
+    #      {"payload": payload, "enc": payload_enc}
+    #  ]  
     # }
-    #   decrypted data is this:
-    # {
-    #     "userame": "username", 
-    #      "signature": "user signature"
-    # } 
+    #   decrypted payload data is this:
+    # [
+    #      "user signature"
+    # ] 
     #
     # this will be encrypted by the usual method
     data = request.get_json()
     try:
       ks = Keystore(FerretDB())
-      receiver_key = garden.create_key_from_text(record['key'])
+      receiver_key = garden.create_key_from_text(data['key'])
       signature = garden.get_key_fingerprint(receiver_key)
       challenge_txt = ks.get_current_challenge(signature)
-      approved = confirm_identity(challenge_txt, data['attempted_message'], data['enc'])
+      approved = confirm_identity(challenge_txt, data['data'][0]['attempted_challenge'], data['data'][0]['enc'])
       ks.remove_challenge(signature)
       if approved is True:
-        payload = garend.decrypt_message(data['payload'], receiver_key, data['enc'])
-        payload = json.loads(payload)
+        secret_key = utils.open_server_secret_key()
+
+        payload = garden.decrypt_message(data['data'][1]['payload'], secret_key, data['data'][1]['enc'])          
+        requestor_signature, _ = payload.split("@@")
+
         record = ks.get_tribe_record(tribe_id)
-        if recrod is None:
+        print(record)
+        is_admin = False
+        if record is None:
           return {"error": "Search high and low..no tribe was found"}
-        if payload['signature'] == record['admin_signature']:
-          record['is_admin'] == True
-        if payload['signature'] in record['blocklist']:
+        if requestor_signature == record['admin_signature']:
+          is_admin == True
+        if signature in record['blocklist']:
           return {"blocked": "You have been blocked from this tribe. Get the fuck away!"}
-        return {'tribe': record }
+        record['_id'] = str(record['_id'])
+        message_str = []
+        for message in record['messages']:
+          message_str.append({
+            'ct': message['ct'],
+            'iv': message['iv']
+          })
+        print(f"message_str is {message_str}")
+        data_bytes = f"{str(record['_id'])}@@{json.dumps(message_str)}@@{record['shared_key']}@@{record['description']}@@{is_admin}"
+        response, enc = garden.encrypt_message(data_bytes, receiver_key)
+        return {
+          "data": response,
+          "enc": enc
+        }
+      else:
+        return {"error": "Man, something fucked on the server!"}
     except Exception as e:
+      import traceback
+      print(traceback.print_exc())
       app.logger.error(f"function: get_tribe, signature: {signature}, error message: {str(e)}")
-      return {'error': 'Could not find that tribe. There was an error on the mail server.'}
+      return {'error': 'There was an error on the mail server.'}
 
 
 @app.route("/tribe/create", methods=["POST"])
 def create_new_tribe():
-  # encrypted payload is 
-  # {
-  #   "attempted_message": <message attepmt>,
-  #    "payload": <d data message>
-  #  "enc": <shared_secret>
+  # payload from client is 
+  #  { "key": <client public key>
+  #  "data": [
+  #       {"attempted_challenge": attempted_challenge, "enc": attempted_challenge_enc},
+  #      {"payload": payload, "enc": payload_enc}
+  #  ]  
   # }
-  #   decrypted data is this:
+  #   decrypted payload data is this:
   # {
   #    "name": "new tribe name",
   #     "userame": "username", 
